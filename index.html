@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cerebro QR · Venta de Carteles de Reseñas</title>
+<!-- Librería externa de confeti para animaciones fluidas -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #fafaf9; color: #1c1917; }
@@ -61,6 +63,12 @@
   }
   header p { margin: 4px 0 0; opacity: .8; font-size: 13px; color: #d6d3d1; }
 
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
   /* Pill de racha en cabecera */
   .streak-pill {
     background: linear-gradient(135deg, #ff4500 0%, #ea580c 100%);
@@ -80,6 +88,20 @@
     box-shadow: none;
     border: 1px solid #44403c;
   }
+
+  .btn-month-end {
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+    transition: background 0.2s;
+  }
+  .btn-month-end:hover { background: #15803d; }
 
   main { max-width: 1100px; margin: 0 auto; padding: 24px; }
   
@@ -225,12 +247,16 @@
     </div>
   </div>
 
-  <!-- Indicador de racha diaria en cabecera -->
-  <div class="streak-pill inactive" id="headerStreak">
-    <svg width="20" height="20" viewBox="0 0 64 64" fill="none">
-      <path fill-rule="evenodd" clip-rule="evenodd" d="M35.2 6C27.5 10.5 23.8 17.5 22.3 23.2C21.5 26.2 19.6 25.8 19.5 22.8C16.2 26.5 14 31.8 14 37.5C14 48.8 22.3 58 32.5 58C42.7 58 51 48.8 51 37.5C51 32.2 49.1 27.3 46 23.6C45.9 26.6 43.9 27.1 43.1 24.3C42.2 21.1 40.3 18.2 37.6 16.2C37.9 19.3 35.8 21.4 33.4 20.6C30.8 19.7 30.2 15.2 35.2 6ZM32.5 47C37.7467 47 42 42.7467 42 37.5C42 32.2533 37.7467 28 32.5 28C27.2533 28 23 32.2533 23 37.5C23 42.7467 27.2533 47 32.5 47Z" fill="currentColor"/>
-    </svg>
-    <span id="headerStreakText">Racha: 0 días</span>
+  <div class="header-actions">
+    <!-- Botón de Cierre de Mes con fuegos artificiales -->
+    <button class="btn-month-end" onclick="triggerMonthEndCelebration()">🎉 ¡Cierre de Mes!</button>
+    <!-- Indicador de racha diaria -->
+    <div class="streak-pill inactive" id="headerStreak">
+      <svg width="20" height="20" viewBox="0 0 64 64" fill="none">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M35.2 6C27.5 10.5 23.8 17.5 22.3 23.2C21.5 26.2 19.6 25.8 19.5 22.8C16.2 26.5 14 31.8 14 37.5C14 48.8 22.3 58 32.5 58C42.7 58 51 48.8 51 37.5C51 32.2 49.1 27.3 46 23.6C45.9 26.6 43.9 27.1 43.1 24.3C42.2 21.1 40.3 18.2 37.6 16.2C37.9 19.3 35.8 21.4 33.4 20.6C30.8 19.7 30.2 15.2 35.2 6ZM32.5 47C37.7467 47 42 42.7467 42 37.5C42 32.2533 37.7467 28 32.5 28C27.2533 28 23 32.2533 23 37.5C23 42.7467 27.2533 47 32.5 47Z" fill="currentColor"/>
+      </svg>
+      <span id="headerStreakText">Racha: 0 días</span>
+    </div>
   </div>
 </header>
 
@@ -343,7 +369,40 @@
     return '$ ' + Number(amount || 0).toLocaleString('es-AR');
   }
 
-  // Obtiene clave YYYY-MM-DD local para calcular días consecutivos
+  // --- Animaciones de Confeti y Fuegos Artificiales ---
+  function fireSaleConfetti() {
+    confetti({
+      particleCount: 80,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#ff4500', '#ffa500', '#16a34a', '#ffffff']
+    });
+  }
+
+  function triggerMonthEndCelebration() {
+    // Secuencia de fuegos artificiales masivos estilo fiesta de fin de mes
+    const duration = 3.5 * 1000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 99999 };
+
+    function randomInRange(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    const interval = setInterval(function() {
+      const timeLeft = animationEnd - Date.now();
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+      const particleCount = 50 * (timeLeft / duration);
+      
+      // Fuegos artificiales desde ambos lados
+      confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+      confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+    }, 250);
+  }
+  // ----------------------------------------------------
+
   function getDayKey(ts) {
     const d = new Date(ts);
     const y = d.getFullYear();
@@ -352,7 +411,6 @@
     return `${y}-${m}-${day}`;
   }
 
-  // Calcula la racha de días seguidos con al menos 1 venta
   function calculateStreak() {
     const soldDays = new Set();
     businesses.forEach(b => {
@@ -475,8 +533,9 @@
     save();
     render();
 
-    // Si se acaba de marcar como vendido, mostrar el contador de racha
+    // Si se acaba de marcar como vendido, disparar confeti y racha
     if (!wasSold && b.status === 'sold') {
+      fireSaleConfetti();
       const currentStreak = calculateStreak();
       showStreakNotification(b.name, currentStreak);
     }
