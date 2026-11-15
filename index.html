@@ -11,7 +11,7 @@
   header h1 { margin: 0; font-size: 22px; }
   header p { margin: 4px 0 0; opacity: .8; font-size: 14px; }
   main { max-width: 1100px; margin: 0 auto; padding: 24px; }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
   .stat { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
   .stat span { font-size: 13px; color: #6b7280; }
   .stat strong { display: block; font-size: 26px; margin-top: 4px; }
@@ -29,7 +29,8 @@
   .btn-ghost { background: #e5e7eb; color: #374151; }
   .btn-ghost:hover { background: #d1d5db; }
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .filters button { background: #e5e7eb; color: #374151; padding: 6px 12px; font-size: 13px; margin-right: 4px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 4px; }
+  .filters button { background: #e5e7eb; color: #374151; padding: 6px 12px; font-size: 13px; }
   .filters button.active { background: #1f2937; color: #fff; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
@@ -37,10 +38,12 @@
   td a { color: #2563eb; word-break: break-all; font-size: 13px; }
   .tags { display: flex; gap: 6px; flex-wrap: wrap; }
   .tag { border: 2px solid transparent; background: #f3f4f6; color: #374151; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .tag.visit.on { background: #2563eb; color: #fff; }
   .tag.sold.on { background: #059669; color: #fff; }
   .tag.no.on { background: #dc2626; color: #fff; }
   .tag.later.on { background: #d97706; color: #fff; }
   .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .b-visit { background: #dbeafe; color: #1e40af; }
   .b-sold { background: #d1fae5; color: #065f46; }
   .b-no { background: #fee2e2; color: #991b1b; }
   .b-later { background: #fef3c7; color: #92400e; }
@@ -55,10 +58,11 @@
 <body>
 <header>
   <h1>Dashboard de clientes · Carteles QR de reseñas</h1>
-  <p>Registra cada negocio visitado y su resultado</p>
+  <p>Registra cada negocio por visitar o visitado y su resultado</p>
 </header>
 <main>
   <div class="stats">
+    <div class="stat"><span>Por visitar</span><strong id="sVisit" style="color:#2563eb">0</strong></div>
     <div class="stat"><span>Total visitados</span><strong id="sTotal">0</strong></div>
     <div class="stat"><span>Vendidos</span><strong id="sSold" style="color:#059669">0</strong></div>
     <div class="stat"><span>No quiso</span><strong id="sNo" style="color:#dc2626">0</strong></div>
@@ -89,6 +93,7 @@
       <h2 style="margin:0">Negocios</h2>
       <div class="filters">
         <button class="active" data-f="all" onclick="setFilter('all', this)">Todos</button>
+        <button data-f="visit" onclick="setFilter('visit', this)">Por visitar</button>
         <button data-f="sold" onclick="setFilter('sold', this)">Vendidos</button>
         <button data-f="no" onclick="setFilter('no', this)">No quiso</button>
         <button data-f="later" onclick="setFilter('later', this)">Volver otro día</button>
@@ -116,8 +121,21 @@
   const STORAGE_KEY = 'dashboard_qr_resenas_v1';
   let businesses = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
   let currentFilter = 'all';
-  const STATUS_LABEL = { sold: 'Vendido', no: 'No quiso', later: 'Volver otro día', none: 'Sin estado' };
-  const STATUS_CLASS = { sold: 'b-sold', no: 'b-no', later: 'b-later', none: 'b-none' };
+  const STATUS_LABEL = {
+    visit: 'Por visitar',
+    sold: 'Vendido',
+    no: 'No quiso',
+    later: 'Volver otro día',
+    none: 'Sin estado'
+  };
+  const STATUS_CLASS = {
+    visit: 'b-visit',
+    sold: 'b-sold',
+    no: 'b-no',
+    later: 'b-later',
+    none: 'b-none'
+  };
+
   // Intenta leer el nombre del negocio desde un enlace de Google Maps
   function parseMapsLink(url) {
     const result = { name: '' };
@@ -127,13 +145,13 @@
       if (m) {
         result.name = decodeURIComponent(m[1].replace(/\+/g, ' ')).trim();
       }
-      // Si el enlace trae parámetro q= con el nombre
       if (!result.name && u.searchParams.get('q')) {
         result.name = u.searchParams.get('q').replace(/\+/g, ' ');
       }
     } catch (e) { /* no es una URL válida */ }
     return result;
   }
+
   function onLinkInput() {
     const link = document.getElementById('negLink').value;
     const hint = document.getElementById('linkHint');
@@ -149,7 +167,9 @@
       hint.textContent = 'No se pudo leer el nombre del enlace. Escribilo y la dirección a mano.';
     }
   }
+
   function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(businesses)); }
+
   function addBusiness() {
     const name = document.getElementById('negName').value.trim();
     const link = document.getElementById('negLink').value.trim();
@@ -157,7 +177,8 @@
     const phone = document.getElementById('negPhone').value.trim();
     if (!name) { alert('Escribí el nombre del negocio.'); return; }
     businesses.unshift({
-      id: Date.now(), name, link, address, phone, status: 'none',
+      id: Date.now(), name, link, address, phone,
+      status: 'visit', // Se guarda por defecto como "Por visitar"
       date: new Date().toLocaleDateString('es-AR')
     });
     save();
@@ -166,39 +187,47 @@
     document.getElementById('linkHint').textContent = 'Si el enlace trae el nombre, se completa solo.';
     render();
   }
+
   function setStatus(id, status) {
     const b = businesses.find(x => x.id === id);
     if (!b) return;
-    b.status = (b.status === status) ? 'none' : status; // clic de nuevo = quitar estado
+    b.status = (b.status === status) ? 'none' : status;
     b.updated = new Date().toLocaleDateString('es-AR');
     save(); render();
   }
+
   function removeBusiness(id) {
     if (!confirm('¿Eliminar este negocio?')) return;
     businesses = businesses.filter(x => x.id !== id);
     save(); render();
   }
+
   function setFilter(f, btn) {
     currentFilter = f;
     document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     render();
   }
+
   function esc(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
+
   function render() {
-    // Estadísticas
-    const total = businesses.length;
+    const toVisit = businesses.filter(b => b.status === 'visit').length;
     const sold = businesses.filter(b => b.status === 'sold').length;
     const no = businesses.filter(b => b.status === 'no').length;
     const later = businesses.filter(b => b.status === 'later').length;
-    document.getElementById('sTotal').textContent = total;
+    // Los que están "Por visitar" no suman como ya visitados
+    const visitedTotal = businesses.filter(b => b.status !== 'visit').length;
+
+    document.getElementById('sVisit').textContent = toVisit;
+    document.getElementById('sTotal').textContent = visitedTotal;
     document.getElementById('sSold').textContent = sold;
     document.getElementById('sNo').textContent = no;
     document.getElementById('sLater').textContent = later;
-    document.getElementById('sRate').textContent = total ? Math.round(sold / total * 100) + '%' : '0%';
-    // Tabla
+    document.getElementById('sRate').textContent = visitedTotal ? Math.round(sold / visitedTotal * 100) + '%' : '0%';
+
     const list = businesses.filter(b => currentFilter === 'all' || b.status === currentFilter);
     const tbody = document.getElementById('tbody');
     tbody.innerHTML = list.map(b => `
@@ -212,6 +241,7 @@
         <td><span class="badge ${STATUS_CLASS[b.status]}">${STATUS_LABEL[b.status]}</span><br><small style="color:#6b7280">${b.updated ? 'Act. ' + b.updated : 'Agregado ' + b.date}</small></td>
         <td>
           <div class="tags">
+            <button class="tag visit ${b.status==='visit'?'on':''}" onclick="setStatus(${b.id},'visit')">Por visitar</button>
             <button class="tag sold ${b.status==='sold'?'on':''}" onclick="setStatus(${b.id},'sold')">Vendí</button>
             <button class="tag no ${b.status==='no'?'on':''}" onclick="setStatus(${b.id},'no')">No quiso</button>
             <button class="tag later ${b.status==='later'?'on':''}" onclick="setStatus(${b.id},'later')">Volver otro día</button>
@@ -222,6 +252,7 @@
     `).join('');
     document.getElementById('emptyMsg').style.display = list.length ? 'none' : 'block';
   }
+
   document.getElementById('negLink').addEventListener('input', onLinkInput);
   document.getElementById('negLink').addEventListener('paste', () => setTimeout(onLinkInput, 0));
   render();
