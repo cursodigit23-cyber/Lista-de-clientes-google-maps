@@ -11,10 +11,16 @@
   header h1 { margin: 0; font-size: 22px; }
   header p { margin: 4px 0 0; opacity: .8; font-size: 14px; }
   main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  
+  /* Tarjetas de estadísticas y calculadora */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
   .stat { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
   .stat span { font-size: 13px; color: #6b7280; }
-  .stat strong { display: block; font-size: 26px; margin-top: 4px; }
+  .stat strong { display: block; font-size: 24px; margin-top: 4px; }
+  .stat.featured { background: linear-gradient(135deg, #065f46 0%, #047857 100%); color: #fff; grid-column: span 2; }
+  .stat.featured span { color: #d1fae5; }
+  .stat.featured strong { color: #fff; font-size: 28px; }
+
   .card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 24px; }
   .card h2 { margin: 0 0 14px; font-size: 17px; }
   label { display: block; font-size: 13px; color: #374151; margin: 10px 0 4px; font-weight: 600; }
@@ -26,8 +32,6 @@
   button { cursor: pointer; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; font-family: inherit; }
   .btn-primary { background: #2563eb; color: #fff; margin-top: 16px; }
   .btn-primary:hover { background: #1d4ed8; }
-  .btn-ghost { background: #e5e7eb; color: #374151; }
-  .btn-ghost:hover { background: #d1d5db; }
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .filters { display: flex; flex-wrap: wrap; gap: 4px; }
   .filters button { background: #e5e7eb; color: #374151; padding: 6px 12px; font-size: 13px; }
@@ -52,16 +56,23 @@
   .del:hover { color: #dc2626; }
   .empty { text-align: center; color: #9ca3af; padding: 30px; }
   .biz small { color: #6b7280; display: block; }
-  @media (max-width: 700px) { .row { grid-template-columns: 1fr; } table { font-size: 13px; } }
+  .sale-editor { margin-top: 8px; background: #f9fafb; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb; display: flex; gap: 10px; align-items: center; font-size: 12px; }
+  .sale-editor input { width: 75px; padding: 4px 6px; font-size: 12px; }
+  @media (max-width: 700px) { .row { grid-template-columns: 1fr; } table { font-size: 13px; .stat.featured { grid-column: span 1; } } }
 </style>
 </head>
 <body>
 <header>
   <h1>Dashboard de clientes · Carteles QR de reseñas</h1>
-  <p>Registra cada negocio por visitar o visitado y su resultado</p>
+  <p>Registra cada negocio por visitar o visitado y sus ventas</p>
 </header>
 <main>
   <div class="stats">
+    <div class="stat featured">
+      <span>💰 Ventas este mes (Recaudación)</span>
+      <strong id="sMonthlyRevenue">$0</strong>
+      <span style="font-size:11px; margin-top:2px; display:block;" id="sMonthlyUnits">0 carteles vendidos este mes</span>
+    </div>
     <div class="stat"><span>Por visitar</span><strong id="sVisit" style="color:#2563eb">0</strong></div>
     <div class="stat"><span>Total visitados</span><strong id="sTotal">0</strong></div>
     <div class="stat"><span>Vendidos</span><strong id="sSold" style="color:#059669">0</strong></div>
@@ -69,6 +80,7 @@
     <div class="stat"><span>Volver otro día</span><strong id="sLater" style="color:#d97706">0</strong></div>
     <div class="stat"><span>Tasa de venta</span><strong id="sRate">0%</strong></div>
   </div>
+
   <div class="card">
     <h2>Agregar negocio</h2>
     <label for="negName">Nombre del negocio</label>
@@ -88,6 +100,7 @@
     </div>
     <button class="btn-primary" onclick="addBusiness()">Guardar negocio</button>
   </div>
+
   <div class="card">
     <div class="toolbar">
       <h2 style="margin:0">Negocios</h2>
@@ -118,9 +131,10 @@
   </div>
 </main>
 <script>
-  const STORAGE_KEY = 'dashboard_qr_resenas_v1';
+  const STORAGE_KEY = 'dashboard_qr_resenas_v2';
   let businesses = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
   let currentFilter = 'all';
+
   const STATUS_LABEL = {
     visit: 'Por visitar',
     sold: 'Vendido',
@@ -136,7 +150,10 @@
     none: 'b-none'
   };
 
-  // Intenta leer el nombre del negocio desde un enlace de Google Maps
+  function formatMoney(amount) {
+    return '$ ' + Number(amount || 0).toLocaleString('es-AR');
+  }
+
   function parseMapsLink(url) {
     const result = { name: '' };
     try {
@@ -176,10 +193,16 @@
     const address = document.getElementById('negAddress').value.trim();
     const phone = document.getElementById('negPhone').value.trim();
     if (!name) { alert('Escribí el nombre del negocio.'); return; }
+    
     businesses.unshift({
-      id: Date.now(), name, link, address, phone,
-      status: 'visit', // Se guarda por defecto como "Por visitar"
-      date: new Date().toLocaleDateString('es-AR')
+      id: Date.now(),
+      name, link, address, phone,
+      status: 'visit',
+      date: new Date().toLocaleDateString('es-AR'),
+      timestamp: Date.now(),
+      updatedTimestamp: Date.now(),
+      quantity: 1,
+      price: 15000
     });
     save();
     ['negName','negLink','negAddress','negPhone'].forEach(id => document.getElementById(id).value = '');
@@ -193,7 +216,22 @@
     if (!b) return;
     b.status = (b.status === status) ? 'none' : status;
     b.updated = new Date().toLocaleDateString('es-AR');
+    b.updatedTimestamp = Date.now();
     save(); render();
+  }
+
+  function updateQuantity(id, val) {
+    const b = businesses.find(x => x.id === id);
+    if (!b) return;
+    b.quantity = Math.max(1, parseInt(val) || 1);
+    save(); renderStats();
+  }
+
+  function updatePrice(id, val) {
+    const b = businesses.find(x => x.id === id);
+    if (!b) return;
+    b.price = Math.max(0, parseFloat(val) || 0);
+    save(); renderStats();
   }
 
   function removeBusiness(id) {
@@ -213,43 +251,80 @@
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  function render() {
+  function renderStats() {
+    const now = new Date();
+    const curMonth = now.getMonth();
+    const curYear = now.getFullYear();
+
+    let monthlyRevenue = 0;
+    let monthlyUnits = 0;
+
+    businesses.forEach(b => {
+      if (b.status === 'sold') {
+        const timeToCheck = b.updatedTimestamp || b.timestamp || Date.now();
+        const d = new Date(timeToCheck);
+        if (d.getMonth() === curMonth && d.getFullYear() === curYear) {
+          const qty = b.quantity || 1;
+          const prc = b.price !== undefined ? b.price : 15000;
+          monthlyRevenue += qty * prc;
+          monthlyUnits += qty;
+        }
+      }
+    });
+
     const toVisit = businesses.filter(b => b.status === 'visit').length;
     const sold = businesses.filter(b => b.status === 'sold').length;
     const no = businesses.filter(b => b.status === 'no').length;
     const later = businesses.filter(b => b.status === 'later').length;
-    // Los que están "Por visitar" no suman como ya visitados
     const visitedTotal = businesses.filter(b => b.status !== 'visit').length;
 
+    document.getElementById('sMonthlyRevenue').textContent = formatMoney(monthlyRevenue);
+    document.getElementById('sMonthlyUnits').textContent = `${monthlyUnits} cartel${monthlyUnits === 1 ? '' : 'es'} vendido${monthlyUnits === 1 ? '' : 's'} este mes`;
     document.getElementById('sVisit').textContent = toVisit;
     document.getElementById('sTotal').textContent = visitedTotal;
     document.getElementById('sSold').textContent = sold;
     document.getElementById('sNo').textContent = no;
     document.getElementById('sLater').textContent = later;
     document.getElementById('sRate').textContent = visitedTotal ? Math.round(sold / visitedTotal * 100) + '%' : '0%';
+  }
 
+  function render() {
+    renderStats();
     const list = businesses.filter(b => currentFilter === 'all' || b.status === currentFilter);
     const tbody = document.getElementById('tbody');
-    tbody.innerHTML = list.map(b => `
-      <tr>
-        <td class="biz">
-          <strong>${esc(b.name)}</strong>
-          <small>${esc(b.address || 'Sin dirección')}</small>
-          ${b.phone ? `<small>${esc(b.phone)}</small>` : ''}
-        </td>
-        <td>${b.link ? `<a href="${esc(b.link)}" target="_blank" rel="noopener">Abrir en Maps</a>` : '<span style="color:#9ca3af">—</span>'}</td>
-        <td><span class="badge ${STATUS_CLASS[b.status]}">${STATUS_LABEL[b.status]}</span><br><small style="color:#6b7280">${b.updated ? 'Act. ' + b.updated : 'Agregado ' + b.date}</small></td>
-        <td>
-          <div class="tags">
-            <button class="tag visit ${b.status==='visit'?'on':''}" onclick="setStatus(${b.id},'visit')">Por visitar</button>
-            <button class="tag sold ${b.status==='sold'?'on':''}" onclick="setStatus(${b.id},'sold')">Vendí</button>
-            <button class="tag no ${b.status==='no'?'on':''}" onclick="setStatus(${b.id},'no')">No quiso</button>
-            <button class="tag later ${b.status==='later'?'on':''}" onclick="setStatus(${b.id},'later')">Volver otro día</button>
-          </div>
-        </td>
-        <td><button class="del" title="Eliminar" onclick="removeBusiness(${b.id})">✕</button></td>
-      </tr>
-    `).join('');
+    
+    tbody.innerHTML = list.map(b => {
+      const qty = b.quantity !== undefined ? b.quantity : 1;
+      const prc = b.price !== undefined ? b.price : 15000;
+      
+      return `
+        <tr>
+          <td class="biz">
+            <strong>${esc(b.name)}</strong>
+            <small>${esc(b.address || 'Sin dirección')}</small>
+            ${b.phone ? `<small>${esc(b.phone)}</small>` : ''}
+            ${b.status === 'sold' ? `
+              <div class="sale-editor">
+                <label style="margin:0; font-size:11px;">Cant: <input type="number" min="1" value="${qty}" onchange="updateQuantity(${b.id}, this.value)"></label>
+                <label style="margin:0; font-size:11px;">Total $: <input type="number" step="500" min="0" value="${prc}" onchange="updatePrice(${b.id}, this.value)"></label>
+              </div>
+            ` : ''}
+          </td>
+          <td>${b.link ? `<a href="${esc(b.link)}" target="_blank" rel="noopener">Abrir en Maps</a>` : '<span style="color:#9ca3af">—</span>'}</td>
+          <td><span class="badge ${STATUS_CLASS[b.status]}">${STATUS_LABEL[b.status]}</span><br><small style="color:#6b7280">${b.updated ? 'Act. ' + b.updated : 'Agregado ' + b.date}</small></td>
+          <td>
+            <div class="tags">
+              <button class="tag visit ${b.status==='visit'?'on':''}" onclick="setStatus(${b.id},'visit')">Por visitar</button>
+              <button class="tag sold ${b.status==='sold'?'on':''}" onclick="setStatus(${b.id},'sold')">Vendí</button>
+              <button class="tag no ${b.status==='no'?'on':''}" onclick="setStatus(${b.id},'no')">No quiso</button>
+              <button class="tag later ${b.status==='later'?'on':''}" onclick="setStatus(${b.id},'later')">Volver otro día</button>
+            </div>
+          </td>
+          <td><button class="del" title="Eliminar" onclick="removeBusiness(${b.id})">✕</button></td>
+        </tr>
+      `;
+    }).join('');
+    
     document.getElementById('emptyMsg').style.display = list.length ? 'none' : 'block';
   }
 
