@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard clientes - Carteles QR</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #f3f4f6; color: #1f2937; }
+  header { background: #1e3a8a; color: #fff; padding: 20px 28px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; opacity: .8; font-size: 14px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .stat span { font-size: 13px; color: #6b7280; }
+  .stat strong { display: block; font-size: 26px; margin-top: 4px; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 24px; }
+  .card h2 { margin: 0 0 14px; font-size: 17px; }
+  label { display: block; font-size: 13px; color: #374151; margin: 10px 0 4px; font-weight: 600; }
+  input, textarea { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; }
+  input:focus { outline: 2px solid #93c5fd; border-color: #3b82f6; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .hint { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .hint.ok { color: #047857; }
+  button { cursor: pointer; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; font-family: inherit; }
+  .btn-primary { background: #2563eb; color: #fff; margin-top: 16px; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-ghost { background: #e5e7eb; color: #374151; }
+  .btn-ghost:hover { background: #d1d5db; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .filters button { background: #e5e7eb; color: #374151; padding: 6px 12px; font-size: 13px; margin-right: 4px; }
+  .filters button.active { background: #1f2937; color: #fff; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+  th { font-size: 12px; text-transform: uppercase; color: #6b7280; letter-spacing: .03em; }
+  td a { color: #2563eb; word-break: break-all; font-size: 13px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { border: 2px solid transparent; background: #f3f4f6; color: #374151; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .tag.sold.on { background: #059669; color: #fff; }
+  .tag.no.on { background: #dc2626; color: #fff; }
+  .tag.later.on { background: #d97706; color: #fff; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .b-sold { background: #d1fae5; color: #065f46; }
+  .b-no { background: #fee2e2; color: #991b1b; }
+  .b-later { background: #fef3c7; color: #92400e; }
+  .b-none { background: #e5e7eb; color: #374151; }
+  .del { background: none; color: #9ca3af; padding: 4px 8px; }
+  .del:hover { color: #dc2626; }
+  .empty { text-align: center; color: #9ca3af; padding: 30px; }
+  .biz small { color: #6b7280; display: block; }
+  @media (max-width: 700px) { .row { grid-template-columns: 1fr; } table { font-size: 13px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Dashboard de clientes · Carteles QR de reseñas</h1>
+  <p>Registra cada negocio visitado y su resultado</p>
+</header>
+<main>
+  <div class="stats">
+    <div class="stat"><span>Total visitados</span><strong id="sTotal">0</strong></div>
+    <div class="stat"><span>Vendidos</span><strong id="sSold" style="color:#059669">0</strong></div>
+    <div class="stat"><span>No quiso</span><strong id="sNo" style="color:#dc2626">0</strong></div>
+    <div class="stat"><span>Volver otro día</span><strong id="sLater" style="color:#d97706">0</strong></div>
+    <div class="stat"><span>Tasa de venta</span><strong id="sRate">0%</strong></div>
+  </div>
+  <div class="card">
+    <h2>Agregar negocio</h2>
+    <label for="negName">Nombre del negocio</label>
+    <input id="negName" placeholder="Ej: Cafetería Luna">
+    <label for="negLink">Enlace de Google Maps</label>
+    <input id="negLink" placeholder="Pegá el enlace de Google Maps del negocio">
+    <div class="hint" id="linkHint">Si el enlace trae el nombre, se completa solo.</div>
+    <div class="row">
+      <div>
+        <label for="negAddress">Dirección</label>
+        <input id="negAddress" placeholder="Ej: Av. Corrientes 1234, CABA">
+      </div>
+      <div>
+        <label for="negPhone">Teléfono / contacto (opcional)</label>
+        <input id="negPhone" placeholder="Ej: +54 11 1234-5678">
+      </div>
+    </div>
+    <button class="btn-primary" onclick="addBusiness()">Guardar negocio</button>
+  </div>
+  <div class="card">
+    <div class="toolbar">
+      <h2 style="margin:0">Negocios</h2>
+      <div class="filters">
+        <button class="active" data-f="all" onclick="setFilter('all', this)">Todos</button>
+        <button data-f="sold" onclick="setFilter('sold', this)">Vendidos</button>
+        <button data-f="no" onclick="setFilter('no', this)">No quiso</button>
+        <button data-f="later" onclick="setFilter('later', this)">Volver otro día</button>
+        <button data-f="none" onclick="setFilter('none', this)">Sin estado</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Negocio</th>
+            <th>Enlace Maps</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="emptyMsg" style="display:none">Todavía no hay negocios cargados.</div>
+    </div>
+  </div>
+</main>
+<script>
+  const STORAGE_KEY = 'dashboard_qr_resenas_v1';
+  let businesses = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  let currentFilter = 'all';
+  const STATUS_LABEL = { sold: 'Vendido', no: 'No quiso', later: 'Volver otro día', none: 'Sin estado' };
+  const STATUS_CLASS = { sold: 'b-sold', no: 'b-no', later: 'b-later', none: 'b-none' };
+  // Intenta leer el nombre del negocio desde un enlace de Google Maps
+  function parseMapsLink(url) {
+    const result = { name: '' };
+    try {
+      const u = new URL(url.trim());
+      const m = u.pathname.match(/\/place\/([^\/]+)/);
+      if (m) {
+        result.name = decodeURIComponent(m[1].replace(/\+/g, ' ')).trim();
+      }
+      // Si el enlace trae parámetro q= con el nombre
+      if (!result.name && u.searchParams.get('q')) {
+        result.name = u.searchParams.get('q').replace(/\+/g, ' ');
+      }
+    } catch (e) { /* no es una URL válida */ }
+    return result;
+  }
+  function onLinkInput() {
+    const link = document.getElementById('negLink').value;
+    const hint = document.getElementById('linkHint');
+    if (!link) { hint.className = 'hint'; hint.textContent = 'Si el enlace trae el nombre, se completa solo.'; return; }
+    const info = parseMapsLink(link);
+    if (info.name) {
+      const nameInput = document.getElementById('negName');
+      if (!nameInput.value.trim()) nameInput.value = info.name;
+      hint.className = 'hint ok';
+      hint.textContent = 'Nombre detectado: ' + info.name + '. Completá la dirección si no se detectó.';
+    } else {
+      hint.className = 'hint';
+      hint.textContent = 'No se pudo leer el nombre del enlace. Escribilo y la dirección a mano.';
+    }
+  }
+  function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(businesses)); }
+  function addBusiness() {
+    const name = document.getElementById('negName').value.trim();
+    const link = document.getElementById('negLink').value.trim();
+    const address = document.getElementById('negAddress').value.trim();
+    const phone = document.getElementById('negPhone').value.trim();
+    if (!name) { alert('Escribí el nombre del negocio.'); return; }
+    businesses.unshift({
+      id: Date.now(), name, link, address, phone, status: 'none',
+      date: new Date().toLocaleDateString('es-AR')
+    });
+    save();
+    ['negName','negLink','negAddress','negPhone'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('linkHint').className = 'hint';
+    document.getElementById('linkHint').textContent = 'Si el enlace trae el nombre, se completa solo.';
+    render();
+  }
+  function setStatus(id, status) {
+    const b = businesses.find(x => x.id === id);
+    if (!b) return;
+    b.status = (b.status === status) ? 'none' : status; // clic de nuevo = quitar estado
+    b.updated = new Date().toLocaleDateString('es-AR');
+    save(); render();
+  }
+  function removeBusiness(id) {
+    if (!confirm('¿Eliminar este negocio?')) return;
+    businesses = businesses.filter(x => x.id !== id);
+    save(); render();
+  }
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function render() {
+    // Estadísticas
+    const total = businesses.length;
+    const sold = businesses.filter(b => b.status === 'sold').length;
+    const no = businesses.filter(b => b.status === 'no').length;
+    const later = businesses.filter(b => b.status === 'later').length;
+    document.getElementById('sTotal').textContent = total;
+    document.getElementById('sSold').textContent = sold;
+    document.getElementById('sNo').textContent = no;
+    document.getElementById('sLater').textContent = later;
+    document.getElementById('sRate').textContent = total ? Math.round(sold / total * 100) + '%' : '0%';
+    // Tabla
+    const list = businesses.filter(b => currentFilter === 'all' || b.status === currentFilter);
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = list.map(b => `
+      <tr>
+        <td class="biz">
+          <strong>${esc(b.name)}</strong>
+          <small>${esc(b.address || 'Sin dirección')}</small>
+          ${b.phone ? `<small>${esc(b.phone)}</small>` : ''}
+        </td>
+        <td>${b.link ? `<a href="${esc(b.link)}" target="_blank" rel="noopener">Abrir en Maps</a>` : '<span style="color:#9ca3af">—</span>'}</td>
+        <td><span class="badge ${STATUS_CLASS[b.status]}">${STATUS_LABEL[b.status]}</span><br><small style="color:#6b7280">${b.updated ? 'Act. ' + b.updated : 'Agregado ' + b.date}</small></td>
+        <td>
+          <div class="tags">
+            <button class="tag sold ${b.status==='sold'?'on':''}" onclick="setStatus(${b.id},'sold')">Vendí</button>
+            <button class="tag no ${b.status==='no'?'on':''}" onclick="setStatus(${b.id},'no')">No quiso</button>
+            <button class="tag later ${b.status==='later'?'on':''}" onclick="setStatus(${b.id},'later')">Volver otro día</button>
+          </div>
+        </td>
+        <td><button class="del" title="Eliminar" onclick="removeBusiness(${b.id})">✕</button></td>
+      </tr>
+    `).join('');
+    document.getElementById('emptyMsg').style.display = list.length ? 'none' : 'block';
+  }
+  document.getElementById('negLink').addEventListener('input', onLinkInput);
+  document.getElementById('negLink').addEventListener('paste', () => setTimeout(onLinkInput, 0));
+  render();
+</script>
+</body>
+</html>
